@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, TrendingUp, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-bitcoin-vaults.jpg";
 
 export const Hero = () => {
@@ -33,19 +34,25 @@ export const Hero = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
           <Button 
+            asChild
             size="lg" 
             className="group px-8 py-6 text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_40px_rgba(247,147,26,0.3)] hover:shadow-[0_0_60px_rgba(247,147,26,0.5)] transition-all duration-300"
           >
-            Start Earning
-            <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+            <Link to="/vaults">
+              Start Earning
+              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </Button>
           
           <Button 
+            asChild
             size="lg" 
             variant="outline"
             className="px-8 py-6 text-lg font-semibold border-primary/30 hover:border-primary hover:bg-primary/10"
           >
-            View Analytics
+            <Link to="/analytics">
+              View Analytics
+            </Link>
           </Button>
         </div>
 
