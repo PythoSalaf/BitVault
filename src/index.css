@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
     /* Bitcoin/Starknet Dark Theme */
@@ -43,11 +39,19 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     /* Custom tokens for DeFi UI */
-    --gradient-bitcoin: linear-gradient(135deg, hsl(30 93% 54%) 0%, hsl(10 74% 64%) 100%);
-    --gradient-vault: linear-gradient(180deg, hsl(240 15% 10%) 0%, hsl(240 18% 8%) 100%);
+    --gradient-bitcoin: linear-gradient(
+      135deg,
+      hsl(30 93% 54%) 0%,
+      hsl(10 74% 64%) 100%
+    );
+    --gradient-vault: linear-gradient(
+      180deg,
+      hsl(240 15% 10%) 0%,
+      hsl(240 18% 8%) 100%
+    );
     --glow-bitcoin: 0 0 40px hsl(30 93% 54% / 0.3);
     --glow-purple: 0 0 40px hsl(10 74% 64% / 0.3);
-    
+
     --sidebar-background: 240 18% 8%;
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 30 93% 54%;

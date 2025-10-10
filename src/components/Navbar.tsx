@@ -2,9 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Shield, Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { WalletAccount } from "starknet";
+import { connectWallet } from "@/lib/WalletConnect";
+
+// Utility to truncate address for display
+const truncateAddress = (address: string): string => {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [wallet, setWallet] = useState<WalletAccount | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const location = useLocation();
 
   const navItems = [
@@ -14,6 +24,30 @@ export const Navbar = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleConnect = async () => {
+    if (wallet) {
+      // Optional: Handle disconnect logic here if needed
+      setWallet(null);
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const account = await connectWallet();
+      setWallet(account);
+    } catch (error) {
+      console.error("Connection failed:", error);
+      // Optional: Show toast/error notification
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const buttonText = wallet
+    ? truncateAddress(wallet.address)
+    : "Connect Wallet";
+  const buttonVariant = wallet ? "outline" : "default"; // Change style when connected
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,10 +88,16 @@ export const Navbar = () => {
           {/* CTA Button */}
           <div className="hidden md:block">
             <Button
-              asChild
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(247,147,26,0.3)] hover:shadow-[0_0_30px_rgba(247,147,26,0.5)] transition-all"
+              onClick={handleConnect}
+              disabled={isConnecting}
+              variant={buttonVariant}
+              className={`${
+                wallet
+                  ? "text-primary border-primary hover:bg-primary/5"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(247,147,26,0.3)] hover:shadow-[0_0_30px_rgba(247,147,26,0.5)] transition-all"
+              }`}
             >
-              <Link to="/vaults">Connect Wallet</Link>
+              {isConnecting ? "Connecting..." : buttonText}
             </Button>
           </div>
 
@@ -93,12 +133,16 @@ export const Navbar = () => {
             ))}
             <div className="px-4 pt-2">
               <Button
-                asChild
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={handleConnect}
+                disabled={isConnecting}
+                variant={buttonVariant}
+                className={`w-full ${
+                  wallet
+                    ? "text-primary border-primary hover:bg-primary/5"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                }`}
               >
-                <Link to="/vaults" onClick={() => setMobileMenuOpen(false)}>
-                  Connect Wallet
-                </Link>
+                {isConnecting ? "Connecting..." : buttonText}
               </Button>
             </div>
           </div>
