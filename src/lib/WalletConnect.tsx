@@ -2,7 +2,7 @@ import { connect } from "@starknet-io/get-starknet"; // v4.0.3 min
 import { WalletAccount, RpcProvider } from "starknet"; // v7.0.1 min
 
 const myFrontendProviderUrl =
-  "https://starknet-sepolia.public.blastapi.io/rpc/v0_8";
+  import.meta.env.VITE_RPC_URL;
 
 /**
  * Connects to a Starknet wallet using the standard UI modal.

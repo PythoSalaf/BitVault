@@ -3,6 +3,8 @@ import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, DollarSign, Percent, Users, Activity, BarChart3 } from "lucide-react";
+import { useVaultApp } from "@/context/VaultAppContext";
+import { formatUnits } from "viem";
 import {
   LineChart,
   Line,
@@ -19,6 +21,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+
+const WBTC_DECIMALS = 8;
 
 const apyHistoryData = [
   { date: "Jan", flexible: 5.2, balanced: 7.8, maximum: 10.2 },
@@ -54,38 +58,48 @@ const vaultDistribution = [
   { name: "Maximum", value: 15800000, color: "hsl(var(--secondary))" },
 ];
 
-const metrics = [
-  {
-    title: "Total Value Locked",
-    value: "$42.5M",
-    change: "+12.3%",
-    icon: DollarSign,
-    color: "text-primary",
-  },
-  {
-    title: "Average APY",
-    value: "9.8%",
-    change: "+1.2%",
-    icon: Percent,
-    color: "text-accent",
-  },
-  {
-    title: "Active Users",
-    value: "1,247",
-    change: "+89",
-    icon: Users,
-    color: "text-secondary",
-  },
-  {
-    title: "24h Volume",
-    value: "$3.2M",
-    change: "+5.7%",
-    icon: Activity,
-    color: "text-foreground",
-  },
-];
-
 const Analytics = () => {
+  const { vaultData } = useVaultApp();
+
+  const tvlBtc = formatUnits(vaultData.totalDeposited, WBTC_DECIMALS);
+  const btcPrice = formatUnits(vaultData.btcPrice, 8); // Oracle usually 8 decimals
+  const tvlUsd = (parseFloat(tvlBtc) * parseFloat(btcPrice)).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+  const metrics = [
+    {
+      title: "Total Value Locked",
+      value: `${tvlBtc} BTC`,
+      subValue: `$${tvlUsd}`,
+      change: "+12.3%",
+      icon: DollarSign,
+      color: "text-primary",
+    },
+    {
+      title: "Average APY",
+      value: "9.8%",
+      change: "+1.2%",
+      icon: Percent,
+      color: "text-accent",
+    },
+    {
+      title: "BTC Price",
+      value: `$${parseFloat(btcPrice).toLocaleString()}`,
+      change: "+3.4%",
+      icon: TrendingUp,
+      color: "text-secondary",
+    },
+    {
+      title: "24h Volume",
+      value: "$3.2M",
+      change: "+5.7%",
+      icon: Activity,
+      color: "text-foreground",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -119,7 +133,8 @@ const Analytics = () => {
                   </div>
                   <span className="text-sm font-medium text-accent">{metric.change}</span>
                 </div>
-                <h3 className="text-3xl font-bold mb-2">{metric.value}</h3>
+                <h3 className="text-2xl font-bold mb-1">{metric.value}</h3>
+                {metric.subValue && <p className="text-sm font-medium text-muted-foreground mb-1">{metric.subValue}</p>}
                 <p className="text-sm text-muted-foreground">{metric.title}</p>
               </Card>
             );
