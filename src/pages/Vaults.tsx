@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -6,8 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, TrendingUp, Clock, Wallet, ArrowRight, Info } from "lucide-react";
+import { Lock, TrendingUp, Wallet, ArrowRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useVaultApp } from "@/context/VaultAppContext";
+import { formatUnits } from "viem";
+
+const WBTC_DECIMALS = 8;
 
 const vaults = [
   {
@@ -44,19 +48,62 @@ const vaults = [
 ];
 
 const Vaults = () => {
+  const { 
+    wallet, 
+    address, 
+    connect, 
+    vaultData, 
+    loading, 
+    deposit, 
+    approveWBTC 
+  } = useVaultApp();
+  
   const [selectedVault, setSelectedVault] = useState(vaults[1].id);
   const [depositAmount, setDepositAmount] = useState("");
+  const [isApproving, setIsApproving] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
 
   const currentVault = vaults.find(v => v.id === selectedVault);
 
-  const handleDeposit = () => {
+  const formattedBalance = useMemo(() => {
+    return formatUnits(vaultData.wbtcBalance, WBTC_DECIMALS);
+  }, [vaultData.wbtcBalance]);
+
+  const handleAction = async () => {
+    if (!wallet) {
+      await connect();
+      return;
+    }
+
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
       toast.error("Please enter a valid deposit amount");
       return;
     }
-    toast.success(`Depositing ${depositAmount} BTC to ${currentVault?.name}`, {
-      description: "Please confirm the transaction in your wallet",
-    });
+
+    try {
+      // Step 1: Approve
+      setIsApproving(true);
+      toast.info("Approving WBTC...", { description: "Please confirm in your wallet" });
+      const approveTx = await approveWBTC(depositAmount);
+      if (!approveTx) throw new Error("Approval failed");
+      setIsApproving(false);
+
+      // Step 2: Deposit
+      setIsDepositing(true);
+      toast.info("Depositing to Vault...", { description: "One more confirmation needed" });
+      const depositTx = await deposit(depositAmount);
+      if (!depositTx) throw new Error("Deposit failed");
+      
+      toast.success("Successfully deposited!", {
+        description: `Tx Hash: ${depositTx.slice(0, 10)}...`,
+      });
+      setDepositAmount("");
+    } catch (err) {
+      toast.error("Transaction failed", { description: (err as Error).message });
+    } finally {
+      setIsApproving(false);
+      setIsDepositing(false);
+    }
   };
 
   return (
@@ -66,9 +113,11 @@ const Vaults = () => {
       {/* Hero Section */}
       <section className="relative py-20 px-4 container mx-auto">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full border border-primary/20 bg-primary/5">
-            <Wallet className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Wallet Not Connected</span>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full border ${address ? 'border-green-500/20 bg-green-500/5 text-green-500' : 'border-primary/20 bg-primary/5 text-primary'}`}>
+            <Wallet className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {address ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}` : 'Wallet Not Connected'}
+            </span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Deposit & Earn</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -137,24 +186,26 @@ const Vaults = () => {
                               className="text-2xl h-16 pr-20 bg-background"
                               step="0.01"
                               min="0"
+                              disabled={isApproving || isDepositing}
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                               <span className="text-sm font-medium text-muted-foreground">BTC</span>
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-2">
-                            Min: {vault.minDeposit} • Your Balance: 0.00 BTC
+                            Min: {vault.minDeposit} • Your Balance: {formattedBalance} WBTC
                           </p>
                         </div>
 
                         {/* Quick Amount Buttons */}
                         <div className="flex gap-2">
-                          {["0.1", "0.5", "1.0"].map((amount) => (
+                          {["0.01", "0.05", "0.1"].map((amount) => (
                             <Button
                               key={amount}
                               variant="outline"
                               size="sm"
                               onClick={() => setDepositAmount(amount)}
+                              disabled={isApproving || isDepositing}
                             >
                               {amount} BTC
                             </Button>
@@ -165,10 +216,21 @@ const Vaults = () => {
                         <Button
                           size="lg"
                           className="w-full text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_30px_rgba(247,147,26,0.3)] hover:shadow-[0_0_40px_rgba(247,147,26,0.5)]"
-                          onClick={handleDeposit}
+                          onClick={handleAction}
+                          disabled={isApproving || isDepositing}
                         >
-                          <Wallet className="mr-2" />
-                          Connect Wallet to Deposit
+                          {isApproving || isDepositing ? (
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          ) : (
+                            <Wallet className="mr-2" />
+                          )}
+                          {!wallet 
+                            ? "Connect Wallet to Deposit" 
+                            : isApproving 
+                              ? "Approving WBTC..." 
+                              : isDepositing 
+                                ? "Depositing..." 
+                                : `Deposit to ${currentVault?.name}`}
                           <ArrowRight className="ml-2" />
                         </Button>
                       </div>

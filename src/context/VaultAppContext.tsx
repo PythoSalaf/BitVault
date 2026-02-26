@@ -9,12 +9,11 @@ import React, {
 import { WalletAccount } from "starknet";
 import { connectWallet } from "@/lib/WalletConnect";
 import {
-  //   wbtcContract,
+  wbtcContract,
   rbBTC,
   btc_vault,
-  //   oracleContract,
-} from "../contracts/contracts/src";
-import { uint256 } from "starknet";
+  BTC_VAULT_ADDRESS,
+} from "@/contracts";
 import { parseUnits } from "viem"; // For parsing amounts
 
 const WBTC_DECIMALS = 8;
@@ -115,6 +114,12 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
     setError(null);
     try {
       const addr = wallet.address;
+      
+      // Connect contracts to the wallet account for read/write
+      wbtcContract.connect(wallet);
+      rbBTC.connect(wallet);
+      btc_vault.connect(wallet);
+
       const [
         wbtcBal,
         rbBal,
@@ -125,25 +130,28 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
         feeRate,
         position,
       ] = await Promise.all([
-        wbtcContract.getBalance(wallet, addr),
-        rbBTC.getBalance(wallet, addr),
-        btc_vault.getUserBalance(addr),
-        btc_vault.getTotalDeposited(),
-        // oracleContract.getBtcUsdPrice(),
-        btc_vault.isPaused(),
-        btc_vault.getDepositFeeRate(),
-        btc_vault.getVaultPosition(),
+        wbtcContract.balance_of(addr),
+        rbBTC.balance_of(addr),
+        btc_vault.get_user_balance(addr),
+        btc_vault.get_total_deposited(),
+        btc_vault.get_asset_price(),
+        btc_vault.is_paused(),
+        btc_vault.get_deposit_fee_rate(),
+        btc_vault.get_vault_position(),
       ]);
 
       setVaultData({
-        wbtcBalance: wbtcBal,
-        rbBtcBalance: rbBal,
-        vaultBalance: vaultBal,
-        totalDeposited: totalDep,
-        btcPrice: price,
-        isPaused: paused,
-        depositFeeRate: feeRate,
-        vaultPosition: position,
+        wbtcBalance: BigInt(wbtcBal.toString()),
+        rbBtcBalance: BigInt(rbBal.toString()),
+        vaultBalance: BigInt(vaultBal.toString()),
+        totalDeposited: BigInt(totalDep.toString()),
+        btcPrice: BigInt(price.toString()),
+        isPaused: !!paused,
+        depositFeeRate: BigInt(feeRate.toString()),
+        vaultPosition: { 
+          collateral: BigInt(position[0].toString()), 
+          debt: BigInt(position[1].toString()) 
+        },
       });
     } catch (err) {
       setError("Failed to fetch vault data");
@@ -174,13 +182,12 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       setError(null);
       try {
-        const txHash = await wbtcContract.approve(
-          wallet,
-          VAULT_ADDRESS,
+        wbtcContract.connect(wallet);
+        const { transaction_hash } = await wbtcContract.approve(
+          BTC_VAULT_ADDRESS,
           amount
         );
-        // In production, wait for tx confirmation before proceeding
-        return txHash;
+        return transaction_hash;
       } catch (err) {
         setError("Approval failed");
         console.error(err);
@@ -207,10 +214,10 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       setError(null);
       try {
-        // Assume approval is handled separately or check allowance first
-        const txHash = await btc_vault.deposit(wallet, amount);
+        btc_vault.connect(wallet);
+        const { transaction_hash } = await btc_vault.deposit_to_vesu(amount);
         await refreshVaultData(); // Refresh after success
-        return txHash;
+        return transaction_hash;
       } catch (err) {
         setError("Deposit failed");
         console.error(err);
@@ -237,9 +244,10 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       setError(null);
       try {
-        const txHash = await btc_vault.withdraw(wallet, amount);
+        btc_vault.connect(wallet);
+        const { transaction_hash } = await btc_vault.withdraw_from_vesu(amount);
         await refreshVaultData(); // Refresh after success
-        return txHash;
+        return transaction_hash;
       } catch (err) {
         setError("Withdraw failed");
         console.error(err);
