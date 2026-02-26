@@ -9,7 +9,7 @@ import React, {
 import { WalletAccount } from "starknet";
 import { connectWallet } from "@/lib/WalletConnect";
 import {
-  // wbtcContract,
+  wbtcContract,
   rbBTC,
   btc_vault,
   BTC_VAULT_ADDRESS,
@@ -116,7 +116,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       const addr = wallet.address;
 
       // Connect contracts to the wallet account for read/write
-      // wbtcContract.connect(wallet);
+      wbtcContract.connect(wallet);
       rbBTC.connect(wallet);
       btc_vault.connect(wallet);
 
@@ -130,7 +130,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
         feeRate,
         position,
       ] = await Promise.all([
-        Promise.resolve(0n), // wbtcContract.balance_of(addr)
+        wbtcContract.balance_of(addr),
         rbBTC.balance_of(addr),
         btc_vault.get_user_balance(addr),
         btc_vault.get_total_deposited(),
@@ -182,14 +182,14 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       setError(null);
       try {
-        // wbtcContract.connect(wallet);
-        // const { transaction_hash } = await wbtcContract.approve(
-        //   BTC_VAULT_ADDRESS,
-        //   amount
-        // );
-        // return transaction_hash;
-        console.warn("approveWBTC called but wbtcContract is missing (Step 2)");
-        return "mock_tx_hash";
+        wbtcContract.connect(wallet);
+        const { transaction_hash } = await wbtcContract.approve(
+          BTC_VAULT_ADDRESS,
+          amount
+        );
+
+        await wbtcContract.providerOrAccount.waitForTransaction(transaction_hash);
+        return transaction_hash;
       } catch (err) {
         setError("Approval failed");
         console.error(err);
