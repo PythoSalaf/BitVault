@@ -9,11 +9,11 @@ import React, {
 import { WalletAccount } from "starknet";
 import { connectWallet } from "@/lib/WalletConnect";
 import {
-  wbtcContract,
+  // wbtcContract,
   rbBTC,
   btc_vault,
   BTC_VAULT_ADDRESS,
-} from "@/contracts";
+} from "@/lib/contracts";
 import { parseUnits } from "viem"; // For parsing amounts
 
 const WBTC_DECIMALS = 8;
@@ -114,9 +114,9 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
     setError(null);
     try {
       const addr = wallet.address;
-      
+
       // Connect contracts to the wallet account for read/write
-      wbtcContract.connect(wallet);
+      // wbtcContract.connect(wallet);
       rbBTC.connect(wallet);
       btc_vault.connect(wallet);
 
@@ -130,7 +130,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
         feeRate,
         position,
       ] = await Promise.all([
-        wbtcContract.balance_of(addr),
+        Promise.resolve(0n), // wbtcContract.balance_of(addr)
         rbBTC.balance_of(addr),
         btc_vault.get_user_balance(addr),
         btc_vault.get_total_deposited(),
@@ -148,9 +148,9 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
         btcPrice: BigInt(price.toString()),
         isPaused: !!paused,
         depositFeeRate: BigInt(feeRate.toString()),
-        vaultPosition: { 
-          collateral: BigInt(position[0].toString()), 
-          debt: BigInt(position[1].toString()) 
+        vaultPosition: {
+          collateral: BigInt(position[0].toString()),
+          debt: BigInt(position[1].toString())
         },
       });
     } catch (err) {
@@ -182,12 +182,14 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       setError(null);
       try {
-        wbtcContract.connect(wallet);
-        const { transaction_hash } = await wbtcContract.approve(
-          BTC_VAULT_ADDRESS,
-          amount
-        );
-        return transaction_hash;
+        // wbtcContract.connect(wallet);
+        // const { transaction_hash } = await wbtcContract.approve(
+        //   BTC_VAULT_ADDRESS,
+        //   amount
+        // );
+        // return transaction_hash;
+        console.warn("approveWBTC called but wbtcContract is missing (Step 2)");
+        return "mock_tx_hash";
       } catch (err) {
         setError("Approval failed");
         console.error(err);
