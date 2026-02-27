@@ -10,6 +10,7 @@ import { Lock, TrendingUp, Wallet, ArrowRight, Info, Loader2 } from "lucide-reac
 import { toast } from "sonner";
 import { useVaultApp } from "@/context/VaultAppContext";
 import { formatUnits } from "viem";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 const WBTC_DECIMALS = 8;
 
@@ -58,7 +59,14 @@ const Vaults = () => {
     approveWBTC 
   } = useVaultApp();
   
-  const [selectedVault, setSelectedVault] = useState(vaults[1].id);
+  // const [selectedVault, setSelectedVault] = useState(vaults[1].id);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+const vaultFromUrl = searchParams.get("vault");
+
+const [selectedVault, setSelectedVault] = useState(
+  vaultFromUrl || vaults[1].id
+);
   const [depositAmount, setDepositAmount] = useState("");
   const [isApproving, setIsApproving] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
@@ -106,6 +114,11 @@ const Vaults = () => {
     }
   };
 
+  const handleTabChange = (value: string) => {
+  setSelectedVault(value);
+  navigate(`/vaults?vault=${value}`, { replace: true });
+};
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -131,7 +144,7 @@ const Vaults = () => {
             {/* Vault Selection */}
             <div className="lg:col-span-2">
               <Card className="p-8 bg-card border-border">
-                <Tabs value={selectedVault} onValueChange={setSelectedVault}>
+                  <Tabs value={selectedVault} onValueChange={handleTabChange}>
                   <TabsList className="grid w-full grid-cols-3 mb-8">
                     {vaults.map((vault) => (
                       <TabsTrigger

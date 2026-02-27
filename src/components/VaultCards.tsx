@@ -2,9 +2,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Lock, TrendingUp, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const vaults = [
   {
+    id: "flexible",
     name: "Flexible Vault",
     lockPeriod: "7 days",
     apy: "6.5%",
@@ -13,6 +15,7 @@ const vaults = [
     description: "Short-term lock with instant liquidity access",
   },
   {
+     id: "balanced",
     name: "Balanced Vault",
     lockPeriod: "30 days",
     apy: "9.8%",
@@ -22,6 +25,7 @@ const vaults = [
     featured: true,
   },
   {
+    id: "maximum",
     name: "Maximum Yield",
     lockPeriod: "90 days",
     apy: "12.4%",
@@ -32,6 +36,7 @@ const vaults = [
 ];
 
 export const VaultCards = () => {
+   const navigate = useNavigate();
   return (
     <section className="py-20 px-4 container mx-auto">
       <div className="text-center mb-12">
@@ -98,6 +103,7 @@ export const VaultCards = () => {
                   ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(247,147,26,0.3)]' 
                   : 'bg-muted hover:bg-primary hover:text-primary-foreground'
               }`}
+               onClick={() => navigate(`/vaults?vault=${vault.id}`)}
             >
               Deposit BTC
             </Button>
