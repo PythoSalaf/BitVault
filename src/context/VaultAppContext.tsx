@@ -17,6 +17,7 @@ import {
 import { parseUnits } from "viem"; // For parsing amounts
 
 const WBTC_DECIMALS = 8;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
 interface VaultData {
   wbtcBalance: bigint;
@@ -44,6 +45,7 @@ interface VaultAppContextType {
   refreshVaultData: () => Promise<void>;
 
   // Actions
+  checkAllowance: (amount: string) => Promise<boolean>;
   approveWBTC: (amount: string) => Promise<string | null>;
   deposit: (amount: string) => Promise<string | null>;
   withdraw: (amount: string) => Promise<string | null>;
@@ -115,42 +117,29 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const addr = wallet.address;
 
-      // Connect contracts to the wallet account for read/write
+      // Real-time per-user token balances — stay as direct contract calls
       wbtcContract.connect(wallet);
       rbBTC.connect(wallet);
-      btc_vault.connect(wallet);
 
-      const [
-        wbtcBal,
-        rbBal,
-        vaultBal,
-        totalDep,
-        price,
-        paused,
-        feeRate,
-        position,
-      ] = await Promise.all([
+      const [wbtcBal, rbBal, statusRes, priceRes, userBalRes] = await Promise.all([
         wbtcContract.balance_of(addr),
         rbBTC.balance_of(addr),
-        btc_vault.get_user_balance(addr),
-        btc_vault.get_total_deposited(),
-        btc_vault.get_asset_price(),
-        btc_vault.is_paused(),
-        btc_vault.get_deposit_fee_rate(),
-        btc_vault.get_vault_position(),
+        fetch(`${BACKEND_URL}/api/vault/status`).then(r => r.json()),
+        fetch(`${BACKEND_URL}/api/price/btc`).then(r => r.json()),
+        fetch(`${BACKEND_URL}/api/user/${addr}/balance`).then(r => r.json()),
       ]);
 
       setVaultData({
-        wbtcBalance: BigInt(wbtcBal.toString()),
-        rbBtcBalance: BigInt(rbBal.toString()),
-        vaultBalance: BigInt(vaultBal.toString()),
-        totalDeposited: BigInt(totalDep.toString()),
-        btcPrice: BigInt(price.toString()),
-        isPaused: !!paused,
-        depositFeeRate: BigInt(feeRate.toString()),
+        wbtcBalance:    BigInt(wbtcBal.toString()),
+        rbBtcBalance:   BigInt(rbBal.toString()),
+        vaultBalance:   BigInt(userBalRes.vaultBalance   ?? '0'),
+        totalDeposited: BigInt(statusRes.totalDeposited  ?? '0'),
+        btcPrice:       BigInt(Math.round((priceRes.priceUsd ?? 0) * 1e8)),
+        isPaused:       statusRes.isPaused ?? false,
+        depositFeeRate: BigInt(statusRes.depositFeeRate  ?? '0'),
         vaultPosition: {
-          collateral: BigInt(position[0].toString()),
-          debt: BigInt(position[1].toString())
+          collateral: BigInt(statusRes.vesuCollateral ?? '0'),
+          debt:       BigInt(statusRes.vesuDebt       ?? '0'),
         },
       });
     } catch (err) {
@@ -201,6 +190,24 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
     [wallet]
   );
 
+  // Check Allowance
+  const checkAllowance = useCallback(
+    async (amountStr: string) => {
+      if (!wallet) return false;
+      const amount = parseUnits(amountStr, WBTC_DECIMALS);
+      if (amount <= 0n) return false;
+
+      try {
+        const allowance = await wbtcContract.allowance(wallet.address, BTC_VAULT_ADDRESS);
+        return BigInt(allowance.toString()) >= amount;
+      } catch (err) {
+        console.error("Failed to check allowance:", err);
+        return false;
+      }
+    },
+    [wallet]
+  );
+
   // Deposit
   const deposit = useCallback(
     async (amountStr: string) => {
@@ -218,6 +225,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       try {
         btc_vault.connect(wallet);
         const { transaction_hash } = await btc_vault.deposit_to_vesu(amount);
+        await btc_vault.providerOrAccount.waitForTransaction(transaction_hash);
         await refreshVaultData(); // Refresh after success
         return transaction_hash;
       } catch (err) {
@@ -248,6 +256,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
       try {
         btc_vault.connect(wallet);
         const { transaction_hash } = await btc_vault.withdraw_from_vesu(amount);
+        await btc_vault.providerOrAccount.waitForTransaction(transaction_hash);
         await refreshVaultData(); // Refresh after success
         return transaction_hash;
       } catch (err) {
@@ -281,6 +290,7 @@ export const VaultAppProvider: React.FC<{ children: ReactNode }> = ({
     loading,
     error,
     refreshVaultData,
+    checkAllowance,
     approveWBTC,
     deposit,
     withdraw,

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -12,56 +12,91 @@ import { useVaultApp } from "@/context/VaultAppContext";
 import { formatUnits } from "viem";
 
 const WBTC_DECIMALS = 8;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
-const vaults = [
+interface VaultDisplay {
+  id: string;
+  name: string;
+  lockPeriod: string;
+  apy: string;
+  risk: string;
+  minDeposit: string;
+  description: string;
+  featured?: boolean;
+}
+
+const DEFAULT_VAULTS: VaultDisplay[] = [
   {
     id: "flexible",
     name: "Flexible Vault",
-    lockPeriod: "7 days",
-    apy: "6.5%",
-    tvl: "$8.2M",
+    lockPeriod: "No lock",
+    apy: "—",
     risk: "Low",
-    minDeposit: "0.01 BTC",
-    description: "Short-term lock with instant liquidity access",
+    minDeposit: "0.001 BTC",
+    description: "No lock period. Withdraw anytime. Base yield from Vesu lending.",
   },
   {
     id: "balanced",
     name: "Balanced Vault",
     lockPeriod: "30 days",
-    apy: "9.8%",
-    tvl: "$18.5M",
+    apy: "—",
     risk: "Medium",
-    minDeposit: "0.01 BTC",
-    description: "Optimal balance between yield and flexibility",
+    minDeposit: "0.001 BTC",
+    description: "30-day lock. Higher yield through optimized position management.",
     featured: true,
   },
   {
     id: "maximum",
-    name: "Maximum Yield",
+    name: "Maximum Vault",
     lockPeriod: "90 days",
-    apy: "12.4%",
-    tvl: "$15.8M",
-    risk: "Medium",
-    minDeposit: "0.05 BTC",
-    description: "Highest returns for long-term holders",
+    apy: "—",
+    risk: "High",
+    minDeposit: "0.001 BTC",
+    description: "90-day lock. Maximum yield with active rebalancing strategy.",
   },
 ];
 
 const Vaults = () => {
-  const { 
-    wallet, 
-    address, 
-    connect, 
-    vaultData, 
-    loading, 
-    deposit, 
-    approveWBTC 
+  const {
+    wallet,
+    address,
+    connect,
+    vaultData,
+    loading,
+    deposit,
+    withdraw,
+    checkAllowance,
+    approveWBTC
   } = useVaultApp();
-  
-  const [selectedVault, setSelectedVault] = useState(vaults[1].id);
-  const [depositAmount, setDepositAmount] = useState("");
+
+  const [vaults, setVaults] = useState<VaultDisplay[]>(DEFAULT_VAULTS);
+  const [selectedVault, setSelectedVault] = useState(DEFAULT_VAULTS[1].id);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/vault/config`)
+      .then(r => r.json())
+      .then((tiers: Array<{
+        id: string; name: string; lockPeriodDays: number;
+        currentApy: number; minDepositBtc: number; riskLevel: string;
+        description: string;
+      }>) => {
+        setVaults(tiers.map(t => ({
+          id:          t.id,
+          name:        `${t.name} Vault`,
+          lockPeriod:  t.lockPeriodDays === 0 ? "No lock" : `${t.lockPeriodDays} days`,
+          apy:         t.currentApy > 0 ? `${t.currentApy.toFixed(1)}%` : "—",
+          risk:        t.riskLevel.charAt(0).toUpperCase() + t.riskLevel.slice(1),
+          minDeposit:  `${t.minDepositBtc} BTC`,
+          description: t.description,
+          featured:    t.id === "balanced",
+        })));
+      })
+      .catch(console.error);
+  }, []);
+  const [actionType, setActionType] = useState<"deposit" | "withdraw">("deposit");
+  const [amount, setAmount] = useState("");
   const [isApproving, setIsApproving] = useState(false);
-  const [isDepositing, setIsDepositing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const currentVault = vaults.find(v => v.id === selectedVault);
 
@@ -75,36 +110,61 @@ const Vaults = () => {
       return;
     }
 
-    if (!depositAmount || parseFloat(depositAmount) <= 0) {
-      toast.error("Please enter a valid deposit amount");
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error(`Please enter a valid ${actionType} amount`);
       return;
     }
 
     try {
-      // Step 1: Approve
-      setIsApproving(true);
-      toast.info("Approving WBTC...", { description: "Please confirm in your wallet" });
-      const approveTx = await approveWBTC(depositAmount);
-      if (!approveTx) throw new Error("Approval failed");
-      setIsApproving(false);
+      if (actionType === "deposit") {
+        // Step 1: Check Allowance
+        const hasAllowance = await checkAllowance(amount);
 
-      // Step 2: Deposit
-      setIsDepositing(true);
-      toast.info("Depositing to Vault...", { description: "One more confirmation needed" });
-      const depositTx = await deposit(depositAmount);
-      if (!depositTx) throw new Error("Deposit failed");
-      
-      toast.success("Successfully deposited!", {
-        description: `Tx Hash: ${depositTx.slice(0, 10)}...`,
-      });
-      setDepositAmount("");
+        if (!hasAllowance) {
+          setIsApproving(true);
+          toast.info("Approving WBTC...", { description: "Please confirm in your wallet" });
+          const approveTx = await approveWBTC(amount);
+          if (!approveTx) throw new Error("Approval failed");
+          setIsApproving(false);
+        }
+
+        // Step 2: Deposit
+        setIsProcessing(true);
+        toast.info("Depositing to Vault...", { description: "Please confirm in your wallet" });
+        const depositTx = await deposit(amount);
+        if (!depositTx) throw new Error("Deposit failed");
+
+        toast.success("Successfully deposited!", {
+          description: `Tx Hash: ${depositTx.slice(0, 10)}...`,
+        });
+      } else {
+        // Withdraw Flow
+        setIsProcessing(true);
+        toast.info("Withdrawing from Vault...", { description: "Please confirm in your wallet" });
+        const withdrawTx = await withdraw(amount);
+        if (!withdrawTx) throw new Error("Withdraw failed");
+
+        toast.success("Successfully withdrawn!", {
+          description: `Tx Hash: ${withdrawTx.slice(0, 10)}...`,
+        });
+      }
+      setAmount("");
     } catch (err) {
       toast.error("Transaction failed", { description: (err as Error).message });
     } finally {
       setIsApproving(false);
-      setIsDepositing(false);
+      setIsProcessing(false);
     }
   };
+
+  const calculatedFee = useMemo(() => {
+    if (!amount || parseFloat(amount) <= 0) return "0.0000";
+    if (actionType === "withdraw") return "0.0000"; // Withdrawals typically might not have the same fee structure or handled differently
+
+    // Fee rate is scaled by 10000 (e.g. 100 = 1%)
+    const feeDecimal = Number(vaultData.depositFeeRate) / 10000;
+    return (parseFloat(amount) * feeDecimal).toFixed(4);
+  }, [amount, actionType, vaultData.depositFeeRate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,66 +231,93 @@ const Vaults = () => {
                         </div>
                       </div>
 
-                      {/* Deposit Input */}
+                      {/* Action Type Toggle */}
+                      <div className="flex bg-muted/50 p-1 rounded-lg">
+                        <button
+                          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${actionType === 'deposit' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                          onClick={() => setActionType('deposit')}
+                        >
+                          Deposit
+                        </button>
+                        <button
+                          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${actionType === 'withdraw' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                          onClick={() => setActionType('withdraw')}
+                        >
+                          Withdraw
+                        </button>
+                      </div>
+
+                      {/* Input */}
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Deposit Amount
+                          <label className="text-sm font-medium mb-2 block capitalize">
+                            {actionType} Amount
                           </label>
                           <div className="relative">
                             <Input
                               type="number"
                               placeholder="0.00"
-                              value={depositAmount}
-                              onChange={(e) => setDepositAmount(e.target.value)}
+                              value={amount}
+                              onChange={(e) => setAmount(e.target.value)}
                               className="text-2xl h-16 pr-20 bg-background"
                               step="0.01"
                               min="0"
-                              disabled={isApproving || isDepositing}
+                              disabled={isApproving || isProcessing}
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              <span className="text-sm font-medium text-muted-foreground">BTC</span>
+                              <span className="text-sm font-medium text-muted-foreground">
+                                {actionType === "deposit" ? "BTC" : "rbBTC"}
+                              </span>
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Min: {vault.minDeposit} • Your Balance: {formattedBalance} WBTC
+                          <p className="text-sm text-muted-foreground mt-2 flex justify-between">
+                            <span>Min: {vault.minDeposit}</span>
+                            <span>
+                              Balance: {actionType === "deposit" ? formattedBalance : formatUnits(vaultData.vaultBalance, WBTC_DECIMALS)} {actionType === "deposit" ? "WBTC" : "rbBTC"}
+                            </span>
                           </p>
                         </div>
 
                         {/* Quick Amount Buttons */}
                         <div className="flex gap-2">
-                          {["0.01", "0.05", "0.1"].map((amount) => (
+                          {["0.01", "0.05", "0.1", "Max"].map((preset) => (
                             <Button
-                              key={amount}
+                              key={preset}
                               variant="outline"
                               size="sm"
-                              onClick={() => setDepositAmount(amount)}
-                              disabled={isApproving || isDepositing}
+                              onClick={() => {
+                                if (preset === "Max") {
+                                  setAmount(actionType === "deposit" ? formattedBalance : formatUnits(vaultData.vaultBalance, WBTC_DECIMALS));
+                                } else {
+                                  setAmount(preset);
+                                }
+                              }}
+                              disabled={isApproving || isProcessing}
                             >
-                              {amount} BTC
+                              {preset} {preset !== "Max" && "BTC"}
                             </Button>
                           ))}
                         </div>
 
-                        {/* Deposit Button */}
+                        {/* Action Button */}
                         <Button
                           size="lg"
-                          className="w-full text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_30px_rgba(247,147,26,0.3)] hover:shadow-[0_0_40px_rgba(247,147,26,0.5)]"
+                          className="w-full text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_30px_rgba(247,147,26,0.3)] hover:shadow-[0_0_40px_rgba(247,147,26,0.5)] capitalize"
                           onClick={handleAction}
-                          disabled={isApproving || isDepositing}
+                          disabled={isApproving || isProcessing}
                         >
-                          {isApproving || isDepositing ? (
+                          {isApproving || isProcessing ? (
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                           ) : (
                             <Wallet className="mr-2" />
                           )}
-                          {!wallet 
-                            ? "Connect Wallet to Deposit" 
-                            : isApproving 
-                              ? "Approving WBTC..." 
-                              : isDepositing 
-                                ? "Depositing..." 
-                                : `Deposit to ${currentVault?.name}`}
+                          {!wallet
+                            ? "Connect Wallet to Continue"
+                            : isApproving
+                              ? "Approving WBTC..."
+                              : isProcessing
+                                ? "Processing..."
+                                : `${actionType} to ${currentVault?.name}`}
                           <ArrowRight className="ml-2" />
                         </Button>
                       </div>
@@ -253,11 +340,19 @@ const Vaults = () => {
                     <span className="font-semibold">{currentVault?.name}</span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground">Deposit Amount</span>
+                    <span className="text-sm text-muted-foreground capitalize">{actionType} Amount</span>
                     <span className="font-semibold">
-                      {depositAmount || "0.00"} BTC
+                      {amount || "0.00"} {actionType === 'deposit' ? 'WBTC' : 'rbBTC'}
                     </span>
                   </div>
+                  {actionType === 'deposit' && (
+                    <div className="flex justify-between py-3 border-b border-border">
+                      <span className="text-sm text-muted-foreground">Protocol Fee</span>
+                      <span className="font-semibold text-destructive">
+                        {calculatedFee} WBTC
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-3 border-b border-border">
                     <span className="text-sm text-muted-foreground">Expected APY</span>
                     <span className="font-semibold text-accent">{currentVault?.apy}</span>
@@ -269,8 +364,8 @@ const Vaults = () => {
                   <div className="flex justify-between py-3">
                     <span className="text-sm text-muted-foreground">Est. Annual Yield</span>
                     <span className="font-bold text-lg text-accent">
-                      {depositAmount
-                        ? (parseFloat(depositAmount) * (parseFloat(currentVault?.apy || "0") / 100)).toFixed(4)
+                      {amount
+                        ? (parseFloat(amount) * (parseFloat(currentVault?.apy || "0") / 100)).toFixed(4)
                         : "0.0000"}{" "}
                       BTC
                     </span>

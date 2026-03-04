@@ -1,104 +1,111 @@
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, DollarSign, Percent, Users, Activity, BarChart3 } from "lucide-react";
-import { useVaultApp } from "@/context/VaultAppContext";
-import { formatUnits } from "viem";
+import { TrendingUp, DollarSign, Percent, Activity, BarChart3 } from "lucide-react";
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+  LineChart, Line,
+  AreaChart, Area,
+  BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from "recharts";
 
-const WBTC_DECIMALS = 8;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
-const apyHistoryData = [
-  { date: "Jan", flexible: 5.2, balanced: 7.8, maximum: 10.2 },
-  { date: "Feb", flexible: 5.8, balanced: 8.1, maximum: 10.8 },
-  { date: "Mar", flexible: 6.1, balanced: 8.5, maximum: 11.2 },
-  { date: "Apr", flexible: 6.3, balanced: 9.2, maximum: 11.8 },
-  { date: "May", flexible: 6.5, balanced: 9.8, maximum: 12.1 },
-  { date: "Jun", flexible: 6.5, balanced: 9.8, maximum: 12.4 },
-];
+type ApyPoint  = { date: string; flexible: number; balanced: number; maximum: number };
+type TvlPoint  = { date: string; tvlUsd: number };
+type VolPoint  = { date: string; deposits: string; withdrawals: string };
+type DistEntry = { tier: string; tvlUsd: string; percentage: number };
 
-const tvlHistoryData = [
-  { date: "Jan", tvl: 28.5 },
-  { date: "Feb", tvl: 32.2 },
-  { date: "Mar", tvl: 35.8 },
-  { date: "Apr", tvl: 38.4 },
-  { date: "May", tvl: 40.2 },
-  { date: "Jun", tvl: 42.5 },
-];
+const TIER_COLORS: Record<string, string> = {
+  flexible: "hsl(var(--accent))",
+  balanced: "hsl(var(--primary))",
+  maximum:  "hsl(var(--secondary))",
+};
 
-const volumeData = [
-  { date: "Mon", deposits: 2.4, withdrawals: 1.2 },
-  { date: "Tue", deposits: 3.1, withdrawals: 1.8 },
-  { date: "Wed", deposits: 2.8, withdrawals: 1.5 },
-  { date: "Thu", deposits: 3.5, withdrawals: 2.1 },
-  { date: "Fri", deposits: 4.2, withdrawals: 1.9 },
-  { date: "Sat", deposits: 3.8, withdrawals: 2.3 },
-  { date: "Sun", deposits: 2.9, withdrawals: 1.6 },
-];
+const TOOLTIP_STYLE = {
+  backgroundColor: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "8px",
+  color: "hsl(var(--foreground))",
+};
 
-const vaultDistribution = [
-  { name: "Flexible", value: 8200000, color: "hsl(var(--accent))" },
-  { name: "Balanced", value: 18500000, color: "hsl(var(--primary))" },
-  { name: "Maximum", value: 15800000, color: "hsl(var(--secondary))" },
-];
+const Placeholder = ({ text = "Awaiting chain data" }: { text?: string }) => (
+  <div className="flex items-center justify-center h-[350px] text-sm text-muted-foreground">
+    {text}
+  </div>
+);
 
 const Analytics = () => {
-  const { vaultData } = useVaultApp();
+  const [apyHistory,   setApyHistory]   = useState<ApyPoint[]>([]);
+  const [tvlHistory,   setTvlHistory]   = useState<TvlPoint[]>([]);
+  const [volumeData,   setVolumeData]   = useState<VolPoint[]>([]);
+  const [distribution, setDistribution] = useState<DistEntry[]>([]);
+  const [tvlUsd,       setTvlUsd]       = useState<number>(0);
+  const [btcPriceUsd,  setBtcPriceUsd]  = useState<number>(0);
+  const [activeUsers,  setActiveUsers]  = useState<number>(0);
+  const [volume24h,    setVolume24h]    = useState<string>("0.00000000");
 
-  const tvlBtc = formatUnits(vaultData.totalDeposited, WBTC_DECIMALS);
-  const btcPrice = formatUnits(vaultData.btcPrice, 8); // Oracle usually 8 decimals
-  const tvlUsd = (parseFloat(tvlBtc) * parseFloat(btcPrice)).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  useEffect(() => {
+    Promise.all([
+      fetch(`${BACKEND_URL}/api/analytics/apy-history?days=30`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/api/analytics/tvl-history?days=30`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/api/analytics/volume?days=7`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/api/analytics/distribution`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/api/analytics/metrics`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/api/price/btc`).then(r => r.json()),
+    ])
+      .then(([apy, tvl, vol, dist, metrics, price]) => {
+        setApyHistory(apy);
+        setTvlHistory(tvl);
+        setVolumeData(vol);
+        setDistribution(dist);
+        setTvlUsd(metrics.tvlUsd      ?? 0);
+        setActiveUsers(metrics.activeUsers ?? 0);
+        setVolume24h(metrics.volume24hBtc  ?? "0.00000000");
+        setBtcPriceUsd(price.priceUsd ?? 0);
+      })
+      .catch(console.error);
+  }, []);
 
-  const metrics = [
+  const fmt = (n: number, opts?: Intl.NumberFormatOptions) =>
+    n.toLocaleString(undefined, opts);
+
+  const metricCards = [
     {
       title: "Total Value Locked",
-      value: `${tvlBtc} BTC`,
-      subValue: `$${tvlUsd}`,
-      change: "+12.3%",
-      icon: DollarSign,
+      value: `$${fmt(tvlUsd, { maximumFractionDigits: 2 })}`,
+      icon:  DollarSign,
       color: "text-primary",
     },
     {
       title: "Average APY",
-      value: "9.8%",
-      change: "+1.2%",
-      icon: Percent,
+      value: "—",
+      icon:  Percent,
       color: "text-accent",
     },
     {
       title: "BTC Price",
-      value: `$${parseFloat(btcPrice).toLocaleString()}`,
-      change: "+3.4%",
-      icon: TrendingUp,
+      value: btcPriceUsd > 0 ? `$${fmt(btcPriceUsd)}` : "—",
+      icon:  TrendingUp,
       color: "text-secondary",
     },
     {
       title: "24h Volume",
-      value: "$3.2M",
-      change: "+5.7%",
-      icon: Activity,
+      value: `${volume24h} BTC`,
+      icon:  Activity,
       color: "text-foreground",
     },
   ];
+
+  // Volume data: convert satoshis → BTC for chart display
+  const volChartData = volumeData.map(r => ({
+    date:        r.date,
+    deposits:    Number(r.deposits)    / 1e8,
+    withdrawals: Number(r.withdrawals) / 1e8,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,7 +127,7 @@ const Analytics = () => {
       {/* Metrics Grid */}
       <section className="py-8 px-4 container mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {metrics.map((metric, index) => {
+          {metricCards.map((metric, index) => {
             const Icon = metric.icon;
             return (
               <Card
@@ -131,10 +138,8 @@ const Analytics = () => {
                   <div className={`p-3 rounded-lg bg-muted/50 ${metric.color} group-hover:scale-110 transition-transform duration-300`}>
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-sm font-medium text-accent">{metric.change}</span>
                 </div>
                 <h3 className="text-2xl font-bold mb-1">{metric.value}</h3>
-                {metric.subValue && <p className="text-sm font-medium text-muted-foreground mb-1">{metric.subValue}</p>}
                 <p className="text-sm text-muted-foreground">{metric.title}</p>
               </Card>
             );
@@ -142,7 +147,7 @@ const Analytics = () => {
         </div>
       </section>
 
-      {/* Charts Section */}
+      {/* Charts */}
       <section className="py-8 px-4 container mx-auto">
         <Tabs defaultValue="apy" className="space-y-8">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
@@ -151,158 +156,130 @@ const Analytics = () => {
             <TabsTrigger value="volume">Volume</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="apy" className="space-y-8">
+          {/* APY Tab */}
+          <TabsContent value="apy">
             <Card className="p-6 bg-card border-border">
               <h3 className="text-xl font-bold mb-6">APY History by Vault Type</h3>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={apyHistoryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: "12px" }}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: "12px" }}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      color: "hsl(var(--foreground))",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="flexible"
-                    stroke="hsl(var(--accent))"
-                    strokeWidth={2}
-                    name="Flexible"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="balanced"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Balanced"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="maximum"
-                    stroke="hsl(var(--secondary))"
-                    strokeWidth={2}
-                    name="Maximum"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {apyHistory.length === 0
+                ? <Placeholder text="APY data accumulates after 24h of chain activity" />
+                : (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={apyHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: "12px" }} />
+                      <YAxis
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                        tickFormatter={(v) => `${v}%`}
+                      />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} />
+                      <Line type="monotone" dataKey="flexible" stroke="hsl(var(--accent))"     strokeWidth={2} name="Flexible" />
+                      <Line type="monotone" dataKey="balanced" stroke="hsl(var(--primary))"    strokeWidth={2} name="Balanced" />
+                      <Line type="monotone" dataKey="maximum"  stroke="hsl(var(--secondary))"  strokeWidth={2} name="Maximum"  />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )
+              }
             </Card>
           </TabsContent>
 
-          <TabsContent value="tvl" className="space-y-8">
+          {/* TVL Tab */}
+          <TabsContent value="tvl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="p-6 bg-card border-border">
                 <h3 className="text-xl font-bold mb-6">Total Value Locked Growth</h3>
-                <ResponsiveContainer width="100%" height={350}>
-                  <AreaChart data={tvlHistoryData}>
-                    <defs>
-                      <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="hsl(var(--muted-foreground))"
-                      style={{ fontSize: "12px" }}
-                    />
-                    <YAxis
-                      stroke="hsl(var(--muted-foreground))"
-                      style={{ fontSize: "12px" }}
-                      tickFormatter={(value) => `$${value}M`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`$${value}M`, "TVL"]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="tvl"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      fill="url(#tvlGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {tvlHistory.length === 0
+                  ? <Placeholder />
+                  : (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <AreaChart data={tvlHistory}>
+                        <defs>
+                          <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: "12px" }} />
+                        <YAxis
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                          tickFormatter={(v) => `$${v.toLocaleString()}`}
+                        />
+                        <Tooltip
+                          contentStyle={TOOLTIP_STYLE}
+                          formatter={(v: number) => [`$${v.toLocaleString()}`, "TVL"]}
+                        />
+                        <Area type="monotone" dataKey="tvlUsd" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#tvlGradient)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )
+                }
               </Card>
 
               <Card className="p-6 bg-card border-border">
                 <h3 className="text-xl font-bold mb-6">TVL Distribution by Vault</h3>
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={vaultDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={120}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {vaultDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => `$${(value / 1000000).toFixed(1)}M`}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {distribution.length === 0
+                  ? <Placeholder />
+                  : (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <PieChart>
+                        <Pie
+                          data={distribution}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) =>
+                            `${(name as string).charAt(0).toUpperCase() + (name as string).slice(1)}: ${(percent * 100).toFixed(0)}%`
+                          }
+                          outerRadius={120}
+                          dataKey="percentage"
+                          nameKey="tier"
+                        >
+                          {distribution.map((entry) => (
+                            <Cell key={entry.tier} fill={TIER_COLORS[entry.tier] ?? "hsl(var(--muted))"} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={TOOLTIP_STYLE}
+                          formatter={(v: number, _name, props) =>
+                            [`$${Number(props.payload?.tvlUsd ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, "TVL"]
+                          }
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )
+                }
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="volume" className="space-y-8">
+          {/* Volume Tab */}
+          <TabsContent value="volume">
             <Card className="p-6 bg-card border-border">
-              <h3 className="text-xl font-bold mb-6">7-Day Deposit & Withdrawal Volume</h3>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={volumeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: "12px" }}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: "12px" }}
-                    tickFormatter={(value) => `$${value}M`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number) => `$${value}M`}
-                  />
-                  <Bar dataKey="deposits" fill="hsl(var(--accent))" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="withdrawals" fill="hsl(var(--secondary))" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <h3 className="text-xl font-bold mb-6">7-Day Deposit &amp; Withdrawal Volume</h3>
+              {volChartData.length === 0
+                ? <Placeholder text="No transactions yet" />
+                : (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={volChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: "12px" }} />
+                      <YAxis
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                        tickFormatter={(v) => `${v} BTC`}
+                      />
+                      <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        formatter={(v: number) => [`${v.toFixed(8)} BTC`]}
+                      />
+                      <Bar dataKey="deposits"    fill="hsl(var(--accent))"    radius={[8, 8, 0, 0]} name="Deposits"    />
+                      <Bar dataKey="withdrawals" fill="hsl(var(--secondary))" radius={[8, 8, 0, 0]} name="Withdrawals" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )
+              }
             </Card>
           </TabsContent>
         </Tabs>
