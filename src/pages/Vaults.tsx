@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -22,6 +23,7 @@ interface VaultDisplay {
   risk: string;
   minDeposit: string;
   description: string;
+  tvl?: string;
   featured?: boolean;
 }
 
@@ -69,8 +71,11 @@ const Vaults = () => {
     approveWBTC
   } = useVaultApp();
 
+  const [searchParams] = useSearchParams();
   const [vaults, setVaults] = useState<VaultDisplay[]>(DEFAULT_VAULTS);
-  const [selectedVault, setSelectedVault] = useState(DEFAULT_VAULTS[1].id);
+  const [selectedVault, setSelectedVault] = useState(
+    searchParams.get("tier") ?? DEFAULT_VAULTS[1].id
+  );
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/vault/config`)
@@ -221,7 +226,7 @@ const Vaults = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">TVL</p>
-                          <p className="text-lg font-semibold">{vault.tvl}</p>
+                          <p className="text-lg font-semibold">{vault.tvl ?? "—"}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Risk Level</p>

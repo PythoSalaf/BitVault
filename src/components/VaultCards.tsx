@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ function capitalize(s: string): string {
 
 export const VaultCards = () => {
   const [tiers, setTiers] = useState<TierConfig[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/vault/config`)
@@ -104,6 +106,7 @@ export const VaultCards = () => {
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(247,147,26,0.3)]"
                     : "bg-muted hover:bg-primary hover:text-primary-foreground"
                 }`}
+                onClick={() => navigate(`/vaults?tier=${tier.id}`)}
               >
                 Deposit BTC
               </Button>

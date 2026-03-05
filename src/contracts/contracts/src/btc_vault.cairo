@@ -228,23 +228,6 @@ mod btc_vault {
             }));
         }
 
-        // Call Vesu Singleton to deposit collateral
-        let singleton = ISingletonDispatcher {
-            contract_address: self.singleton.read()
-        };
-
-        let modify_params = ModifyPositionParams {
-            pool_id: self.pool_id.read(),
-            collateral_asset: token_address,
-            debt_asset: token_address,
-            user: get_contract_address(),
-            collateral: Amount { value: net_amount, is_negative: false },
-            debt: Amount { value: 0, is_negative: false },
-            data: array![],
-        };
-
-        singleton.modify_position(modify_params);
-
         // Update user balance and total deposited
         let old_balance = self.user_balances.read(caller);
         self.user_balances.write(caller, old_balance + net_amount);
@@ -283,23 +266,6 @@ mod btc_vault {
         // Update user balance and total deposited
         self.user_balances.write(caller, current_balance - amount);
         self.total_deposited.write(self.total_deposited.read() - amount);
-
-        // Call Vesu Singleton to withdraw collateral
-        let singleton = ISingletonDispatcher {
-            contract_address: self.singleton.read()
-        };
-
-        let modify_params = ModifyPositionParams {
-            pool_id: self.pool_id.read(),
-            collateral_asset: token_address,
-            debt_asset: token_address,
-            user: get_contract_address(),
-            collateral: Amount { value: amount, is_negative: true },
-            debt: Amount { value: 0, is_negative: false },
-            data: array![],
-        };
-
-        singleton.modify_position(modify_params);
 
         // Transfer tokens to user (minus fee)
         let token = IERC20Dispatcher { contract_address: token_address };

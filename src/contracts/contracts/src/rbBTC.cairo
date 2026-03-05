@@ -17,6 +17,7 @@ mod rb_btc_token {
         balances: Map<ContractAddress, u256>,
         allowances: Map<(ContractAddress, ContractAddress), u256>,
         vault: ContractAddress,
+        owner: ContractAddress,
     }
 
     #[event]
@@ -45,11 +46,12 @@ mod rb_btc_token {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, vault: ContractAddress) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, vault: ContractAddress) {
         self.name.write('Rebalancing BTC');
         self.symbol.write('rbBTC');
         self.decimals.write(8);
         self.total_supply.write(0);
+        self.owner.write(owner);
         self.vault.write(vault);
     }
 
@@ -133,11 +135,11 @@ mod rb_btc_token {
         self.emit(Event::Transfer(Transfer { from: 0.try_into().unwrap(), to, amount }));
     }
 
-    // Update vault address — callable only by current vault (used during initial setup)
+    // Update vault address — callable only by owner (deployer)
     #[external(v0)]
     fn set_vault(ref self: ContractState, new_vault: ContractAddress) {
         let caller = get_caller_address();
-        assert!(caller == self.vault.read(), "only-vault-can-set");
+        assert!(caller == self.owner.read(), "only-owner-can-set");
         self.vault.write(new_vault);
     }
 
