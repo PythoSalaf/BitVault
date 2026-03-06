@@ -6,11 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, TrendingUp, Wallet, ArrowRight, Info, Loader2 } from "lucide-react";
+import {
+  Lock,
+  TrendingUp,
+  Wallet,
+  ArrowRight,
+  Info,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useVaultApp } from "@/context/VaultAppContext";
 import { formatUnits } from "viem";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import Reusetable from "@/components/ui/reusetable";
 
 const WBTC_DECIMALS = 8;
 
@@ -48,34 +56,81 @@ const vaults = [
   },
 ];
 
+interface Transaction {
+  id: string;
+  type: string;
+  asset: string;
+  amount: string;
+  value: string;
+  status: string;
+  date: string;
+}
+
+type Column<T> = {
+  header: string;
+  accessor: keyof T;
+};
+
 const Vaults = () => {
-  const { 
-    wallet, 
-    address, 
-    connect, 
-    vaultData, 
-    loading, 
-    deposit, 
-    approveWBTC 
-  } = useVaultApp();
-  
+  const { wallet, address, connect, vaultData, loading, deposit, approveWBTC } =
+    useVaultApp();
+
   // const [selectedVault, setSelectedVault] = useState(vaults[1].id);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-const vaultFromUrl = searchParams.get("vault");
+  const vaultFromUrl = searchParams.get("vault");
 
-const [selectedVault, setSelectedVault] = useState(
-  vaultFromUrl || vaults[1].id
-);
+  const [selectedVault, setSelectedVault] = useState(
+    vaultFromUrl || vaults[1].id,
+  );
   const [depositAmount, setDepositAmount] = useState("");
   const [isApproving, setIsApproving] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
 
-  const currentVault = vaults.find(v => v.id === selectedVault);
+  const currentVault = vaults.find((v) => v.id === selectedVault);
 
   const formattedBalance = useMemo(() => {
     return formatUnits(vaultData.wbtcBalance, WBTC_DECIMALS);
   }, [vaultData.wbtcBalance]);
+
+  const columns: Column<Transaction>[] = [
+    { header: "Type", accessor: "type" },
+    { header: "Asset", accessor: "asset" },
+    { header: "Amount", accessor: "amount" },
+    { header: "Value", accessor: "value" },
+    { header: "Status", accessor: "status" },
+    { header: "Date", accessor: "date" },
+  ];
+
+  const transactions: Transaction[] = [
+    {
+      id: "1",
+      type: "Deposit",
+      asset: "BTC",
+      amount: "0.45 BTC",
+      value: "$28,400",
+      status: "Completed",
+      date: "Mar 05, 2026",
+    },
+    {
+      id: "2",
+      type: "Withdraw",
+      asset: "BTC",
+      amount: "0.12 BTC",
+      value: "$7,520",
+      status: "Pending",
+      date: "Mar 05, 2026",
+    },
+    {
+      id: "3",
+      type: "Yield Claim",
+      asset: "BTC",
+      amount: "0.005 BTC",
+      value: "$315",
+      status: "Completed",
+      date: "Mar 04, 2026",
+    },
+  ];
 
   const handleAction = async () => {
     if (!wallet) {
@@ -91,23 +146,29 @@ const [selectedVault, setSelectedVault] = useState(
     try {
       // Step 1: Approve
       setIsApproving(true);
-      toast.info("Approving WBTC...", { description: "Please confirm in your wallet" });
+      toast.info("Approving WBTC...", {
+        description: "Please confirm in your wallet",
+      });
       const approveTx = await approveWBTC(depositAmount);
       if (!approveTx) throw new Error("Approval failed");
       setIsApproving(false);
 
       // Step 2: Deposit
       setIsDepositing(true);
-      toast.info("Depositing to Vault...", { description: "One more confirmation needed" });
+      toast.info("Depositing to Vault...", {
+        description: "One more confirmation needed",
+      });
       const depositTx = await deposit(depositAmount);
       if (!depositTx) throw new Error("Deposit failed");
-      
+
       toast.success("Successfully deposited!", {
         description: `Tx Hash: ${depositTx.slice(0, 10)}...`,
       });
       setDepositAmount("");
     } catch (err) {
-      toast.error("Transaction failed", { description: (err as Error).message });
+      toast.error("Transaction failed", {
+        description: (err as Error).message,
+      });
     } finally {
       setIsApproving(false);
       setIsDepositing(false);
@@ -115,9 +176,9 @@ const [selectedVault, setSelectedVault] = useState(
   };
 
   const handleTabChange = (value: string) => {
-  setSelectedVault(value);
-  navigate(`/vaults?vault=${value}`, { replace: true });
-};
+    setSelectedVault(value);
+    navigate(`/vaults?vault=${value}`, { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,15 +187,22 @@ const [selectedVault, setSelectedVault] = useState(
       {/* Hero Section */}
       <section className="relative py-20 px-4 container mx-auto">
         <div className="text-center mb-12">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full border ${address ? 'border-green-500/20 bg-green-500/5 text-green-500' : 'border-primary/20 bg-primary/5 text-primary'}`}>
+          <div
+            className={`inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full border ${address ? "border-green-500/20 bg-green-500/5 text-green-500" : "border-primary/20 bg-primary/5 text-primary"}`}
+          >
             <Wallet className="w-4 h-4" />
             <span className="text-sm font-medium">
-              {address ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}` : 'Wallet Not Connected'}
+              {address
+                ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`
+                : "Wallet Not Connected"}
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Deposit & Earn</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Deposit & Earn
+          </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select a vault, deposit your Bitcoin, and start earning yield through automated DeFi strategies
+            Select a vault, deposit your Bitcoin, and start earning yield
+            through automated DeFi strategies
           </p>
         </div>
 
@@ -144,7 +212,7 @@ const [selectedVault, setSelectedVault] = useState(
             {/* Vault Selection */}
             <div className="lg:col-span-2">
               <Card className="p-8 bg-card border-border">
-                  <Tabs value={selectedVault} onValueChange={handleTabChange}>
+                <Tabs value={selectedVault} onValueChange={handleTabChange}>
                   <TabsList className="grid w-full grid-cols-3 mb-8">
                     {vaults.map((vault) => (
                       <TabsTrigger
@@ -161,24 +229,43 @@ const [selectedVault, setSelectedVault] = useState(
                   </TabsList>
 
                   {vaults.map((vault) => (
-                    <TabsContent key={vault.id} value={vault.id} className="space-y-6">
+                    <TabsContent
+                      key={vault.id}
+                      value={vault.id}
+                      className="space-y-6"
+                    >
                       {/* Vault Details */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-lg bg-muted/30">
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">APY</p>
-                          <p className="text-2xl font-bold text-accent">{vault.apy}</p>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            APY
+                          </p>
+                          <p className="text-2xl font-bold text-accent">
+                            {vault.apy}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">Lock Period</p>
-                          <p className="text-lg font-semibold">{vault.lockPeriod}</p>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Lock Period
+                          </p>
+                          <p className="text-lg font-semibold">
+                            {vault.lockPeriod}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">TVL</p>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            TVL
+                          </p>
                           <p className="text-lg font-semibold">{vault.tvl}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">Risk Level</p>
-                          <Badge variant="outline" className="border-accent/30 text-accent">
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Risk Level
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="border-accent/30 text-accent"
+                          >
                             {vault.risk}
                           </Badge>
                         </div>
@@ -202,11 +289,14 @@ const [selectedVault, setSelectedVault] = useState(
                               disabled={isApproving || isDepositing}
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              <span className="text-sm font-medium text-muted-foreground">BTC</span>
+                              <span className="text-sm font-medium text-muted-foreground">
+                                BTC
+                              </span>
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-2">
-                            Min: {vault.minDeposit} • Your Balance: {formattedBalance} WBTC
+                            Min: {vault.minDeposit} • Your Balance:{" "}
+                            {formattedBalance} WBTC
                           </p>
                         </div>
 
@@ -237,12 +327,12 @@ const [selectedVault, setSelectedVault] = useState(
                           ) : (
                             <Wallet className="mr-2" />
                           )}
-                          {!wallet 
-                            ? "Connect Wallet to Deposit" 
-                            : isApproving 
-                              ? "Approving WBTC..." 
-                              : isDepositing 
-                                ? "Depositing..." 
+                          {!wallet
+                            ? "Connect Wallet to Deposit"
+                            : isApproving
+                              ? "Approving WBTC..."
+                              : isDepositing
+                                ? "Depositing..."
                                 : `Deposit to ${currentVault?.name}`}
                           <ArrowRight className="ml-2" />
                         </Button>
@@ -262,28 +352,45 @@ const [selectedVault, setSelectedVault] = useState(
                 </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground">Selected Vault</span>
+                    <span className="text-sm text-muted-foreground">
+                      Selected Vault
+                    </span>
                     <span className="font-semibold">{currentVault?.name}</span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground">Deposit Amount</span>
+                    <span className="text-sm text-muted-foreground">
+                      Deposit Amount
+                    </span>
                     <span className="font-semibold">
                       {depositAmount || "0.00"} BTC
                     </span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground">Expected APY</span>
-                    <span className="font-semibold text-accent">{currentVault?.apy}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Expected APY
+                    </span>
+                    <span className="font-semibold text-accent">
+                      {currentVault?.apy}
+                    </span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground">Lock Period</span>
-                    <span className="font-semibold">{currentVault?.lockPeriod}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Lock Period
+                    </span>
+                    <span className="font-semibold">
+                      {currentVault?.lockPeriod}
+                    </span>
                   </div>
                   <div className="flex justify-between py-3">
-                    <span className="text-sm text-muted-foreground">Est. Annual Yield</span>
+                    <span className="text-sm text-muted-foreground">
+                      Est. Annual Yield
+                    </span>
                     <span className="font-bold text-lg text-accent">
                       {depositAmount
-                        ? (parseFloat(depositAmount) * (parseFloat(currentVault?.apy || "0") / 100)).toFixed(4)
+                        ? (
+                            parseFloat(depositAmount) *
+                            (parseFloat(currentVault?.apy || "0") / 100)
+                          ).toFixed(4)
                         : "0.0000"}{" "}
                       BTC
                     </span>
@@ -298,13 +405,22 @@ const [selectedVault, setSelectedVault] = useState(
                   <div>
                     <h4 className="font-semibold mb-2">ERC-4626 Standard</h4>
                     <p className="text-sm text-muted-foreground">
-                      All vaults follow the ERC-4626 tokenized vault standard, ensuring security and composability.
+                      All vaults follow the ERC-4626 tokenized vault standard,
+                      ensuring security and composability.
                     </p>
                   </div>
                 </div>
               </Card>
             </div>
           </div>
+        </div>
+      </section>
+      <section className="relative px-6 container mx-auto">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center">
+          Transaction History
+        </h2>
+        <div className="mt-10">
+          <Reusetable columns={columns} data={transactions} />
         </div>
       </section>
 

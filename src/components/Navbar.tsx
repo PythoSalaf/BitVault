@@ -17,8 +17,8 @@ export const Navbar = () => {
 
   const navItems = [
     { name: "Home", path: "/" },
-    { name: "Vaults", path: "/vaults" },
     { name: "Analytics", path: "/analytics" },
+    { name: "Vaults", path: "/vaults" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -31,9 +31,7 @@ export const Navbar = () => {
     }
   };
 
-  const buttonText = address
-    ? truncateAddress(address)
-    : "Connect Wallet";
+  const buttonText = address ? truncateAddress(address) : "Connect Wallet";
   const buttonVariant = address ? "outline" : "default";
 
   return (
