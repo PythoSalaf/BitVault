@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Vaults from "./pages/Vaults";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
+import { AiAdvisor } from "@/components/AiAdvisor";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <AiAdvisor />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
