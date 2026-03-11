@@ -1,73 +1,185 @@
-# Welcome to your Lovable project
+# BitVault — Bitcoin Yield Vaults on Starknet
 
-## Project info
+BitVault is a decentralized Bitcoin yield vault platform that allows users to earn sustainable yield on BTC through automated DeFi strategies built on Starknet.  
+The protocol follows ERC-4626 vault standards and provides transparent, secure, and programmable yield strategies with an AI-powered assistant for portfolio guidance.
 
-**URL**: https://lovable.dev/projects/18b29049-10f7-497e-ab9f-27fad7b1990e
+Live Demo: https://bit-vault-eta.vercel.app/  
+Repository: https://github.com/PythoSalaf/BitVault
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Overview
 
-**Use Lovable**
+BitVault enables users to deposit Bitcoin-backed assets into smart vaults that automatically execute yield strategies on Starknet.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/18b29049-10f7-497e-ab9f-27fad7b1990e) and start prompting.
+The platform focuses on:
 
-Changes made via Lovable will be committed automatically to this repo.
+- Secure vault architecture
+- Transparent on-chain strategies
+- AI-assisted decision making
+- ERC-4626 compliant vault design
+- Starknet smart contracts written in Cairo
 
-**Use your preferred IDE**
+The goal is to make Bitcoin productive in DeFi without sacrificing security.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Features
 
-Follow these steps:
+### Bitcoin Yield Vaults
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Deposit BTC-backed assets
+- Earn automated yield
+- ERC-4626 vault standard
+- Transparent vault logic
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### BitVault Intelligence (AI Agent)
 
-# Step 3: Install the necessary dependencies.
-npm i
+Built-in AI assistant that can:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+- Show live vault data
+- Compare vault tiers
+- Suggest best yield strategy
+- Analyze user portfolio
+- Explain how yield works
+- Guide deposits
 
-**Edit a file directly in GitHub**
+Example prompts:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Vault status
+- My portfolio
+- Compare tiers
+- Deposit now
+- Best tier for me
+- How does yield work?
 
-**Use GitHub Codespaces**
+### Starknet Smart Contracts
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Written in Cairo
+- Designed for scalability
+- Secure vault execution
+- L2 low-fee transactions
 
-## What technologies are used for this project?
+### Frontend Dashboard
 
-This project is built with:
+- Built with React + Vite + TypeScript
+- Tailwind UI
+- Wallet interaction
+- Vault analytics
+- Strategy overview
 
-- Vite
-- TypeScript
+---
+
+## Tech Stack
+
+Frontend
+
 - React
-- shadcn-ui
-- Tailwind CSS
+- TypeScript
+- Vite
+- TailwindCSS
 
-## How can I deploy this project?
+Web3
 
-Simply open [Lovable](https://lovable.dev/projects/18b29049-10f7-497e-ab9f-27fad7b1990e) and click on Share -> Publish.
+- viem
+- starknet.js
+- ERC-4626 vault standard
 
-## Can I connect a custom domain to my Lovable project?
+Smart Contracts
 
-Yes, you can!
+- Cairo
+- Starknet
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+State / Hooks / Context
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- React Context
+- Custom Hooks
+
+AI Agent
+
+- Client-side AI interaction UI
+- Strategy assistant interface
+
+---
+
+## Project Structure
+src/
+├ assets/
+├ components/
+├ context/
+├ contracts/
+├ hooks/
+├ lib/
+├ pages/
+├ App.tsx
+├ main.tsx
+
+
+---
+
+## Installation
+
+Clone the repo
+git clone https://github.com/PythoSalaf/BitVault.git
+
+
+Install dependencies
+npm install
+
+
+---
+
+## How It Works
+
+1. User connects wallet
+2. Select vault tier
+3. Deposit BTC-backed asset
+4. Smart contract executes strategy
+5. Yield generated automatically
+6. User tracks performance in dashboard
+7. AI agent suggests optimizations
+
+---
+
+## Vault Architecture
+
+- ERC-4626 vault interface
+- Strategy contract
+- Asset manager
+- Yield executor
+- Starknet L2 execution
+
+Designed for:
+
+- Security
+- Transparency
+- Composability
+- Automation
+
+---
+
+## Use Cases
+
+- Passive BTC yield
+- DeFi strategy automation
+- Portfolio management
+- Starknet DeFi experimentation
+- Hackathon / grant / research projects
+
+---
+
+## Future Plans
+
+- Live on-chain vault execution
+- Real AI strategy engine
+- Multi-vault support
+- Cross-chain deposits
+- Advanced analytics
+- DAO governance
+- Risk scoring system
+
+---
+
+## License
+
+MIT License
