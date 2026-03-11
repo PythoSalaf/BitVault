@@ -1,4 +1,4 @@
-# BitVault — Bitcoin Yield Vaults on Starknet
+# BitVault  Bitcoin Yield Vaults on Starknet with AI-assistance
 
 BitVault is a decentralized Bitcoin yield vault platform that allows users to earn sustainable yield on BTC through automated DeFi strategies built on Starknet.  
 The protocol follows ERC-4626 vault standards and provides transparent, secure, and programmable yield strategies with an AI-powered assistant for portfolio guidance.
